@@ -62,7 +62,7 @@ async function main() {
 
   // Set offchain schema
   const collectionId = 13;
-  const tx2 = api.tx.nft.setOffchainSchema(collectionId, "https://uniqueapps.usetech.com/gallery/api/image{id}");
+  const tx2 = api.tx.nft.setOffchainSchema(collectionId, "https://uniqueapps.usetech.com/gallery/api/images/{id}");
   await submitTransaction(owner, tx2);
 
 }

@@ -7,6 +7,7 @@ const { Keccak } = require('sha3');
  
 
 const folder = "images";
+const fileprefix = "img";
 
 let api;
 async function getApi() {
@@ -123,7 +124,7 @@ const nftController = {
         const id = await mintAsync(api, owner, nftMeta, newOwner);
 
         // Save file
-        saveFile(`img${id}`, imageData);
+        saveFile(`${fileprefix}${id}`, imageData);
 
         // Send response
         res.setHeader('Content-Type', 'application/json');
@@ -133,6 +134,24 @@ const nftController = {
         console.log("Request error: ", e);
         res.sendStatus(400);
         return;
+      }
+    },
+    get: async (req, res) => {
+      try {
+        const id = req.params.id;
+        const filePath = `${folder}/${fileprefix}${id}`;
+        if (fs.existsSync(filePath)) {
+          res.setHeader('Content-Type', '	image/jpeg');
+
+          const fileData = fs.readFileSync(filePath);
+          res.send(fileData);
+        }
+        else {
+          res.sendStatus(404);
+        }
+      } catch (e) {
+        console.log("get error: ", e);
+        res.sendStatus(400);
       }
 
     },
