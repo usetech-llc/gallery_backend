@@ -1,0 +1,36 @@
+{
+  "name": "nftgallery",
+  "version": "1.0.0",
+  "description": "The NFT gallery backend",
+  "main": "",
+  "directories": {
+    "test": "test"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "start": "node src/app.js"
+  },
+  "author": "",
+  "license": "Apache 2.0",
+  "homepage": "",
+  "dependencies": {
+    "api_v1": "npm:@polkadot/api@1.28.1",
+    "body-parser": "^1.18.3",
+    "express": "^4.17.1",
+    "express-session": "^1.17.0",
+    "fs": "^0.0.1-security",
+    "js-base64": "^3.5.2",
+    "sha3": "^2.1.3"
+  },
+  "standard": {
+    "globals": [
+      "it",
+      "assert",
+      "beforeEach",
+      "afterEach",
+      "describe",
+      "contract",
+      "artifacts"
+    ]
+  }
+}
