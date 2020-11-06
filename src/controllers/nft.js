@@ -121,10 +121,9 @@ const nftController = {
         let nftMeta = `0x${imageHash}${imageNameHex}`;
 
         // Mint token in collection
-        // const keyring = new Keyring({ type: 'sr25519' });
-        // const owner = keyring.addFromUri(config.ownerSeed);
-        // const id = await mintAsync(api, owner, nftMeta, newOwner);
-        const id = 999;
+        const keyring = new Keyring({ type: 'sr25519' });
+        const owner = keyring.addFromUri(config.ownerSeed);
+        const id = await mintAsync(api, owner, nftMeta, newOwner);
 
         // Save file
         saveFile(`${fileprefix}${id}`, imageData);
