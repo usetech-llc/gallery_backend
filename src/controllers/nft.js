@@ -77,7 +77,7 @@ function saveFile(filename, data) {
   if (!fs.existsSync(folder)){
     fs.mkdirSync(folder);
   }
-  fs.writeFileSync(`${folder}/${filename}`, data);
+  fs.writeFileSync(`${folder}/${filename}`, data, 'binary');
 }
 
 const nftController = {
@@ -105,11 +105,13 @@ const nftController = {
         const imageBase64 = req.body['image'];
         const imageName = req.body['name'];
         const newOwner = req.body['address'];
-        const imageData = Base64.decode(imageBase64);
+        const imageData = Buffer.from(imageBase64, 'base64').toString('binary');
         if ((imageBase64.length < 2) || (imageName.length == 0) || (imageName.length > 220) || (newOwner.length != 48)) {
           res.sendStatus(400);
           return;
         }
+        console.log("Image base64 length: ", imageBase64.length);
+        console.log("Image data length: ", imageData.length);
 
         // Calculate metadata
         const hash = new Keccak(256);
@@ -119,9 +121,10 @@ const nftController = {
         let nftMeta = `0x${imageHash}${imageNameHex}`;
 
         // Mint token in collection
-        const keyring = new Keyring({ type: 'sr25519' });
-        const owner = keyring.addFromUri(config.ownerSeed);
-        const id = await mintAsync(api, owner, nftMeta, newOwner);
+        // const keyring = new Keyring({ type: 'sr25519' });
+        // const owner = keyring.addFromUri(config.ownerSeed);
+        // const id = await mintAsync(api, owner, nftMeta, newOwner);
+        const id = 999;
 
         // Save file
         saveFile(`${fileprefix}${id}`, imageData);
