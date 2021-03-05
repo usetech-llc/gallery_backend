@@ -16,6 +16,9 @@ app.use((req, res, next) => {
   next();
 });
 
+// Serve images statically
+app.use(express.static('images'));
+
 // Initializing routes.
 routes(app);
 
