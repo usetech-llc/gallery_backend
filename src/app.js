@@ -1,5 +1,6 @@
 const bodyParser = require('body-parser');
 const express = require('express');
+const config = require('./config');
 
 const routes = require('./routes/routes');
 
@@ -21,5 +22,10 @@ app.use(express.static('images'));
 
 // Initializing routes.
 routes(app);
+
+console.log("Starting Mint Service");
+console.log(`  config.wsEndpoint = ${config.wsEndpoint}`);
+console.log(`  config.ownerSeed = ${config.ownerSeed.substr(0, 5)}...`);
+console.log(`  config.collectionId = ${config.collectionId}`);
 
 app.listen(port, () => console.log(`App listening on port ${port}!`));
