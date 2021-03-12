@@ -115,7 +115,6 @@ const nftController = {
         console.log("Image base64 length: ", imageBase64.length);
         console.log("Image data length: ", imageData.length);
         console.log("Image file name: ", fileName);
-        console.log("Mint adming: ", admin.address.toString());
 
         // Calculate metadata
         const hash = new Keccak(256);
@@ -127,6 +126,7 @@ const nftController = {
         // Mint token in collection
         const keyring = new Keyring({ type: 'sr25519' });
         const admin = keyring.addFromUri(config.ownerSeed);
+        console.log("Mint adming: ", admin.address.toString());
         const id = await mintAsync(api, admin, nftMeta, newOwner);
 
         // Save file
