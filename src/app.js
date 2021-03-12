@@ -8,7 +8,7 @@ const port = 3003;
 const app = express();
 
   // Configure content security
-const allowedOrigins = ['http://localhost:3000', 'https://uniqueapps.usetech.com'];
+const allowedOrigins = ['http://localhost', 'http://localhost:3000', 'https://marketplace.uniquenetwork.io'];
 app.use(bodyParser.urlencoded({ limit: '10mb', extended: true, parameterLimit: 5000 }));
 app.use(bodyParser.json({ limit: '10mb', extended: true }));
 app.use((req, res, next) => {

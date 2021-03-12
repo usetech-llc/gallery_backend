@@ -15,7 +15,7 @@ async function getApi() {
   const wsProvider = new WsProvider(config.wsEndpoint);
 
   // Create the API and wait until ready
-  const api = new ApiPromise({ 
+  let api = new ApiPromise({ 
     provider: wsProvider,
     types: rtt
   });
@@ -115,6 +115,7 @@ const nftController = {
         console.log("Image base64 length: ", imageBase64.length);
         console.log("Image data length: ", imageData.length);
         console.log("Image file name: ", fileName);
+        console.log("Mint adming: ", admin.address.toString());
 
         // Calculate metadata
         const hash = new Keccak(256);
