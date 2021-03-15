@@ -166,7 +166,7 @@ const nftController = {
           if (fs.existsSync(filePath)) {
             res.setHeader('Content-Type', 'application/json');
 
-            const imagePath = `${hostname}/${id}/${fileName}`;
+            const imagePath = `${hostname}/${config.imagesFolder}/${id}/${fileName}`;
             const response = {
               image: imagePath
             }
