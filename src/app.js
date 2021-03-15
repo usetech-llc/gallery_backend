@@ -18,7 +18,7 @@ app.use((req, res, next) => {
 });
 
 // Serve images statically
-app.use(express.static('images'));
+app.use(express.static(config.publicFolder));
 
 // Initializing routes.
 routes(app);

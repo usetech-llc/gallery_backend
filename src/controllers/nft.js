@@ -7,7 +7,7 @@ const Mutex = require('async-mutex').Mutex;
 const { release } = require('os');
 const mutex = new Mutex();
 
-const folder = "images";
+const folder = `${config.publicFolder}/${config.imagesFolder}`;
 
 let api;
 async function getApi() {
