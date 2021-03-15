@@ -72,6 +72,9 @@ function mintAsync(api, admin, nftMeta, newOwner) {
 }
 
 function saveFile(subfolder, filename, data) {
+  if (!fs.existsSync(`${folder}`)){
+    fs.mkdirSync(`${folder}`);
+  }
   if (!fs.existsSync(`${folder}/${subfolder}`)){
     fs.mkdirSync(`${folder}/${subfolder}`);
   }
