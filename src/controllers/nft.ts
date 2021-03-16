@@ -51,7 +51,7 @@ function encodeScale(params: any): Uint8Array {
 
 function mintAsync(api: ApiPromise, admin: IKeyringPair, nftMeta: Uint8Array, newOwner: string) {
   return new Promise(async function(resolve, reject) {
-    const createData = {nft: {const_data: nftMeta, variable_data: []}};
+    const createData = {nft: {const_data: Array.from(nftMeta), variable_data: []}};
     const unsub = await api.tx.nft
       .createItem(config.collectionId, newOwner, createData)
       .signAndSend(admin, (result) => {
