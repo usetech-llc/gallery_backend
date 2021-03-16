@@ -62,14 +62,26 @@ async function main() {
   console.log("Collection owner address: ", owner.address);  
 
   // Create collection as owner
-  console.log("=== Create collection ===");
-  await createCollectionAsync(api, owner);
+  // console.log("=== Create collection ===");
+  // await createCollectionAsync(api, owner);
 
   // // Set offchain schema
-  // const collectionId = 14;
-  // const tx2 = api.tx.nft.setOffchainSchema(collectionId, "https://uniqueapps.usetech.com/api/images/{id}");
-  // await submitTransaction(owner, tx2);
+  const collectionId = 3;
 
+  // console.log("=== Set schema version ===");
+  // const tx2 = api.tx.nft.setSchemaVersion(collectionId, 'Unique');
+  // await submitTransaction(owner, tx2);
+ 
+  // console.log("=== Set offchain schema ===");
+  // const tx3 = api.tx.nft.setOffchainSchema(collectionId, "https://whitelabel.market/metadata/{id}");
+  // await submitTransaction(owner, tx3);
+
+  console.log("=== Set const on-chain schema ===");
+  const tx4 = api.tx.nft.setConstOnChainSchema(collectionId, strToUTF16(`{"root":{"NameStr":"Bytes","ImageHash":"Bytes"}}`));
+  await submitTransaction(owner, tx4);
+
+  // const collection = await api.query.nft.collection(collectionId);
+  // console.log(collection.ConstOnChainSchema.toString());
 }
 
 main().catch(console.error).finally(() => process.exit());

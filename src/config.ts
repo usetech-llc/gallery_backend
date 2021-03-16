@@ -1,3 +1,4 @@
+import process from 'process';
 
 const config = {
   wsEndpoint: process.env.UniqueEndpoint || 'wss://testnet2.uniquenetwork.io',
@@ -8,4 +9,4 @@ const config = {
   imagesFolder: "images"
 };
 
-module.exports = config;
+export default config;

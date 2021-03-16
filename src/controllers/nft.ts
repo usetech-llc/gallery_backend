@@ -1,32 +1,35 @@
-const { ApiPromise, WsProvider, Keyring } = require('@polkadot/api');
-const config = require('../config.js');
-const rtt = require('../runtime_types.json');
-const fs = require('fs');
-const { Keccak } = require('sha3');
-const Mutex = require('async-mutex').Mutex;
-const { release } = require('os');
+import { ApiPromise, WsProvider, Keyring } from '@polkadot/api';
+import config from '../config.js';
+import rtt from "../runtime_types.json";
+import fs  from 'fs';
+import { Keccak } from 'sha3';
+import { Mutex } from 'async-mutex';
+import { IKeyringPair } from '@polkadot/types/types';
+import { Bytes, Struct } from '@polkadot/types';
+import { TypeRegistry } from '@polkadot/types/create';
+
 const mutex = new Mutex();
 
 const folder = `${config.publicFolder}/${config.imagesFolder}`;
 
-let api;
-async function getApi() {
+let api: ApiPromise;
+async function getApi(): Promise<ApiPromise> {
   // Initialise the provider to connect to the node
   const wsProvider = new WsProvider(config.wsEndpoint);
 
   // Create the API and wait until ready
-  let api = new ApiPromise({ 
+  let api: ApiPromise = new ApiPromise({ 
     provider: wsProvider,
     types: rtt
   });
 
   api.on('disconnected', async (value) => {
     console.log(`disconnected: ${value}`);
-    api = null;
+    process.exit(1);
   });
   api.on('error', async (value) => {
     console.log(`error: ${value.toString()}`);
-    api = null;
+    process.exit(1);
   });
 
   await api.isReady;
@@ -34,7 +37,19 @@ async function getApi() {
   return api;
 }
 
-function mintAsync(api, admin, nftMeta, newOwner) {
+
+const registry = new TypeRegistry();
+
+function encodeScale(params: any): Uint8Array {
+  const s = new Struct(registry, {
+    NameStr: Bytes,
+    ImageHash: Bytes,
+  }, params);
+
+  return s.toU8a();
+}
+
+function mintAsync(api: ApiPromise, admin: IKeyringPair, nftMeta: Uint8Array, newOwner: string) {
   return new Promise(async function(resolve, reject) {
     const createData = {nft: {const_data: nftMeta, variable_data: []}};
     const unsub = await api.tx.nft
@@ -63,15 +78,12 @@ function mintAsync(api, admin, nftMeta, newOwner) {
             reject("Transaction failed");
           }
           unsub();
-
-          resolve();
-          unsub();
         }
       });
   });
 }
 
-function saveFile(subfolder, filename, data) {
+function saveFile(subfolder: string, filename: string, data: string) {
   if (!fs.existsSync(`${folder}`)){
     fs.mkdirSync(`${folder}`);
   }
@@ -82,7 +94,7 @@ function saveFile(subfolder, filename, data) {
 }
 
 const nftController = {
-    health: async (req, res) => {
+    health: async (req: any, res: any) => {
       let conn = true;
       try {
         if (!api) api = await getApi();
@@ -98,7 +110,7 @@ const nftController = {
       res.setHeader('Content-Type', 'application/json');
       res.send(JSON.stringify(status));
     },
-    mint: async (req, res) => {
+    mint: async (req: any, res: any) => {
       // Do strictly one at a time
       const release = await mutex.acquire();
 
@@ -122,15 +134,20 @@ const nftController = {
         // Calculate metadata
         const hash = new Keccak(256);
         hash.update(imageData);
-        const imageHash = hash.digest('hex');
-        const imageNameHex = Buffer.from(imageName, 'utf8').toString('hex');
-        let nftMeta = `0x${imageHash}${imageNameHex}`;
+        console.log(hash.digest());
+
+        let nftMeta = {
+          NameStr: imageName,
+          ImageHash: hash.digest().values()
+        };
+        let metaScale: Uint8Array = encodeScale(nftMeta);
+        console.log(`Token metadata: ${metaScale.toString()}`);
 
         // Mint token in collection
         const keyring = new Keyring({ type: 'sr25519' });
         const admin = keyring.addFromUri(config.ownerSeed);
         console.log("Mint adming: ", admin.address.toString());
-        const id = await mintAsync(api, admin, nftMeta, newOwner);
+        const id = await mintAsync(api, admin, metaScale, newOwner);
 
         // Save file
         saveFile(`${id}`, fileName, imageData);
@@ -148,7 +165,7 @@ const nftController = {
         release();
       }
     },
-    getmeta: async (req, res) => {
+    getmeta: async (req: any, res: any) => {
       try {
         const id = req.params.id;
         const fileFolder = `${folder}/${id}`;
@@ -189,4 +206,4 @@ const nftController = {
     },
 };
 
-module.exports = nftController;
+export default nftController;
