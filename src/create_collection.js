@@ -72,9 +72,10 @@ async function main() {
   // const tx2 = api.tx.nft.setSchemaVersion(collectionId, 'Unique');
   // await submitTransaction(owner, tx2);
  
-  // console.log("=== Set offchain schema ===");
-  // const tx3 = api.tx.nft.setOffchainSchema(collectionId, "https://whitelabel.market/metadata/{id}");
-  // await submitTransaction(owner, tx3);
+  console.log("=== Set offchain schema ===");
+  const tx3 = api.tx.nft.setOffchainSchema(collectionId, `{"metadata" : "https://whitelabel.market/metadata/{id}"}`);
+  // const tx3 = api.tx.nft.setOffchainSchema(collectionId, "http://localhost/metadata/{id}");
+  await submitTransaction(owner, tx3);
 
   // console.log("=== Set const on-chain schema ===");
   // const tx4 = api.tx.nft.setConstOnChainSchema(collectionId, strToUTF16(`{"root":{"NameStr":"Bytes","ImageHash":"Bytes"}}`));
@@ -83,8 +84,8 @@ async function main() {
   // const collection = await api.query.nft.collection(collectionId);
   // console.log(collection.ConstOnChainSchema.toString());
 
-  const token = await api.query.nft.nftItemList(collectionId, 20);
-  console.log(token.ConstData.toString());
+  // const token = await api.query.nft.nftItemList(collectionId, 20);
+  // console.log(token.ConstData.toString());
 }
 
 main().catch(console.error).finally(() => process.exit());
