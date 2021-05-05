@@ -11,6 +11,20 @@ function strToUTF16(str) {
   return buf;
 }
 
+function getCreatedCollectionId(events) {
+  let success = false;
+  let collectionId = 0;
+  events.forEach(({ phase, event: { data, method, section } }) => {
+    // console.log(`    ${phase}: ${section}.${method}:: ${data}`);
+    if (method == 'ExtrinsicSuccess') {
+      success = true;
+    } else if ((section == 'nft')  && (method == 'CollectionCreated')) {
+      collectionId = parseInt(data[0].toString());
+    }
+  });
+  return collectionId;
+}
+
 function submitTransaction(sender, transaction) {
   return new Promise(async function(resolve, reject) {
     try {
@@ -20,11 +34,10 @@ function submitTransaction(sender, transaction) {
     
         if (result.status.isInBlock) {
           console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
-          resolve();
-          unsub();
         } else if (result.status.isFinalized) {
           console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
-          resolve();
+          let id = getCreatedCollectionId(result.events);
+          resolve(id);
           unsub();
         }
       });
@@ -36,13 +49,13 @@ function submitTransaction(sender, transaction) {
 }
 
 async function createCollectionAsync(api, signer) {
-  const name = "Unique Gallery";
-  const description = "The NFT collection for artists to mint and display their work";
-  const tokenPrefix = "GAL";
+  const name = "Vernissage";
+  const description = "NFT Marketplace to buy, sell and collect";
+  const tokenPrefix = "VER";
   const modeprm = {nft: null};
   
   const tx = api.tx.nft.createCollection(strToUTF16(name), strToUTF16(description), strToUTF16(tokenPrefix), modeprm);
-  await submitTransaction(signer, tx);
+  return await submitTransaction(signer, tx);
 }
 
 async function main() {
@@ -62,30 +75,23 @@ async function main() {
   console.log("Collection owner address: ", owner.address);  
 
   // Create collection as owner
-  // console.log("=== Create collection ===");
-  // await createCollectionAsync(api, owner);
+  console.log("=== Create collection ===");
+  const collectionId = await createCollectionAsync(api, owner);
+  console.log(`Collection created: ${collectionId}`);
 
-  // // Set offchain schema
-  const collectionId = 3;
-
-  // console.log("=== Set schema version ===");
-  // const tx2 = api.tx.nft.setSchemaVersion(collectionId, 'Unique');
-  // await submitTransaction(owner, tx2);
+  // Set offchain schema
+  console.log("=== Set schema version ===");
+  const tx2 = api.tx.nft.setSchemaVersion(collectionId, 'Unique');
+  await submitTransaction(owner, tx2);
  
   console.log("=== Set offchain schema ===");
-  const tx3 = api.tx.nft.setOffchainSchema(collectionId, `{"metadata" : "https://whitelabel.market/metadata/{id}"}`);
+  const tx3 = api.tx.nft.setOffchainSchema(collectionId, `{"metadata" : "http://whitelabel.market/metadata/{id}"}`);
   // const tx3 = api.tx.nft.setOffchainSchema(collectionId, "http://localhost/metadata/{id}");
   await submitTransaction(owner, tx3);
 
   // console.log("=== Set const on-chain schema ===");
   // const tx4 = api.tx.nft.setConstOnChainSchema(collectionId, strToUTF16(`{"root":{"NameStr":"Bytes","ImageHash":"Bytes"}}`));
   // await submitTransaction(owner, tx4);
-
-  // const collection = await api.query.nft.collection(collectionId);
-  // console.log(collection.ConstOnChainSchema.toString());
-
-  // const token = await api.query.nft.nftItemList(collectionId, 20);
-  // console.log(token.ConstData.toString());
 }
 
 main().catch(console.error).finally(() => process.exit());
