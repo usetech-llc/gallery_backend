@@ -1,16 +1,21 @@
 import { ApiPromise, WsProvider, Keyring } from '@polkadot/api';
-import config from '../config.js';
-import rtt from "../runtime_types.json";
-import fs  from 'fs';
+import config from '../config';
+import rtt from "../runtime_types.json";;
 import { Keccak } from 'sha3';
 import { Mutex } from 'async-mutex';
 import { IKeyringPair } from '@polkadot/types/types';
 import { Bytes, Struct } from '@polkadot/types';
 import { TypeRegistry } from '@polkadot/types/create';
+import { FileSystemHandler, PolkadotHandler } from '../service/stores';
 
 const mutex = new Mutex();
 
 const folder = `${config.publicFolder}/${config.imagesFolder}`;
+const fileSystem = (new FileSystemHandler()).getStore();
+const polkadotSystem = (new PolkadotHandler().createStore({
+  wsEndpoint: config.wsEndpoint,
+  rtt: rtt,
+}));
 
 let api: ApiPromise;
 async function getApi(): Promise<ApiPromise> {
@@ -83,32 +88,27 @@ function mintAsync(api: ApiPromise, admin: IKeyringPair, nftMeta: Uint8Array, ne
   });
 }
 
-function saveFile(subfolder: string, filename: string, data: string) {
-  if (!fs.existsSync(`${folder}`)){
-    fs.mkdirSync(`${folder}`);
-  }
-  if (!fs.existsSync(`${folder}/${subfolder}`)){
-    fs.mkdirSync(`${folder}/${subfolder}`);
-  }
-  fs.writeFileSync(`${folder}/${subfolder}/${filename}`, data, 'binary');
-}
-
 const nftController = {
-    health: async (req: any, res: any) => {
-      let conn = true;
+    health: async (req: any, res: any) => {            
       try {
-        if (!api) api = await getApi();
+        const isLive = await polkadotSystem.get({});        
+        if (isLive !== null) {
+          res.json({
+            connected: true
+          });
+        } else {
+          res.json({
+            connected: false
+          });
+        }                
       }
       catch (e) {
         console.log("ERROR: ", e);
-        conn = false;
+        res.json({
+          connect: false,
+          ...e,
+        })
       }
-
-      const status = {
-          connected: conn,
-      };
-      res.setHeader('Content-Type', 'application/json');
-      res.send(JSON.stringify(status));
     },
     mint: async (req: any, res: any) => {
       // Do strictly one at a time
@@ -118,18 +118,13 @@ const nftController = {
 
       // Get post parameters: File in base64, token name, and file name
       try {
-        const imageBase64 = req.body['image'];
-        const imageName = req.body['name'];
-        const newOwner = req.body['address'];
-        const fileName = req.body['filename'];
-        const imageData = Buffer.from(imageBase64, 'base64').toString('binary');
-        if ((imageBase64.length < 2) || (imageName.length == 0) || (imageName.length > 220) || (newOwner.length != 48) || (fileName.length < 1)) {
+        const {image, name, address, filename} = req.body;
+        if ((image.length < 2) || (name.length == 0) || (name.length > 220) || (address.length != 48) || (filename.length < 1)) {
           res.sendStatus(400);
           return;
         }
-        console.log("Image base64 length: ", imageBase64.length);
-        console.log("Image data length: ", imageData.length);
-        console.log("Image file name: ", fileName);
+        
+        const imageData = Buffer.from(image, 'base64').toString('binary');        
 
         // Calculate metadata
         const hash = new Keccak(256);
@@ -137,7 +132,7 @@ const nftController = {
         console.log(hash.digest());
 
         let nftMeta = {
-          NameStr: imageName,
+          NameStr: name,
           ImageHash: hash.digest().values()
         };
         let metaScale: Uint8Array = encodeScale(nftMeta);
@@ -147,10 +142,14 @@ const nftController = {
         const keyring = new Keyring({ type: 'sr25519' });
         const admin = keyring.addFromUri(config.ownerSeed);
         console.log("Mint adming: ", admin.address.toString());
-        const id = await mintAsync(api, admin, metaScale, newOwner);
+        const id = await mintAsync(api, admin, metaScale, address);
 
-        // Save file
-        saveFile(`${id}`, fileName, imageData);
+        await fileSystem.add({
+          folder,
+          subfolder: id,
+          filename,
+          data: imageData
+        });
 
         // Send response
         res.setHeader('Content-Type', 'application/json');
@@ -158,6 +157,7 @@ const nftController = {
       }
       catch (e) {
         console.log("Request error: ", e);
+        console.log(e);
         res.sendStatus(400);
         return;
       }
@@ -168,42 +168,33 @@ const nftController = {
     getmeta: async (req: any, res: any) => {
       try {
         const id = req.params.id;
-        const fileFolder = `${folder}/${id}`;
-        let fileName = '';
+        const file = await fileSystem.get({
+          fileFolder: `${folder}/${id}`
+        });
         const hostname = req.headers.host;
 
-        if (!fs.existsSync(fileFolder)) {
+        if (file === null) {
           res.sendStatus(404);
-        }
-        else {
-          fs.readdirSync(fileFolder).forEach(file => {
-            fileName = file;
-            console.log(file);
-          });          
-          const filePath = `${fileFolder}/${fileName}`;
-          console.log(`fileName found: ${filePath}`);
-  
-          if (fs.existsSync(filePath)) {
-            res.setHeader('Content-Type', 'application/json');
-
-            const imagePath = `http://${hostname}/${config.imagesFolder}/${id}/${fileName}`;
-            const response = {
+        } else {
+          console.log(`fileName found: ${file}`);
+          res.setHeader('Content-Type', 'application/json');
+          const imagePath = `http://${hostname}/${file}`;
+          const response = {
               image: imagePath
-            }
-
-            res.send(JSON.stringify(response));
           }
-          else {
-            res.sendStatus(404);
-          }
+          res.json(response);
         }
-
       } catch (e) {
         console.log("get error: ", e);
         res.sendStatus(400);
       }
-
     },
+    getConfig: (req: any, res: any) => {
+      res.json({});
+    },
+    setConfig: (req: any, res: any) => {
+      res.json({})
+    }
 };
 
 export default nftController;
