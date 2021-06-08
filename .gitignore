@@ -3,3 +3,4 @@ node_modules
 images/
 
 src/config.js
+config.json

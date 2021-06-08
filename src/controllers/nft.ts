@@ -1,12 +1,7 @@
-import { ApiPromise, WsProvider, Keyring } from '@polkadot/api';
 import config from '../config';
-import rtt from "../runtime_types.json";;
-import { Keccak } from 'sha3';
+import rtt from "../runtime_types.json";
 import { Mutex } from 'async-mutex';
-import { IKeyringPair } from '@polkadot/types/types';
-import { Bytes, Struct } from '@polkadot/types';
-import { TypeRegistry } from '@polkadot/types/create';
-import { FileSystemHandler, PolkadotHandler } from '../service/stores';
+import { FileSystemHandler, PolkadotHandler, JSONHandler } from '../service/stores';
 
 const mutex = new Mutex();
 
@@ -16,77 +11,8 @@ const polkadotSystem = (new PolkadotHandler().createStore({
   wsEndpoint: config.wsEndpoint,
   rtt: rtt,
 }));
+const jsonSystem = (new JSONHandler()).getStore();
 
-let api: ApiPromise;
-async function getApi(): Promise<ApiPromise> {
-  // Initialise the provider to connect to the node
-  const wsProvider = new WsProvider(config.wsEndpoint);
-
-  // Create the API and wait until ready
-  let api: ApiPromise = new ApiPromise({ 
-    provider: wsProvider,
-    types: rtt
-  });
-
-  api.on('disconnected', async (value) => {
-    console.log(`disconnected: ${value}`);
-    process.exit(1);
-  });
-  api.on('error', async (value) => {
-    console.log(`error: ${value.toString()}`);
-    process.exit(1);
-  });
-
-  await api.isReady;
-
-  return api;
-}
-
-
-const registry = new TypeRegistry();
-
-function encodeScale(params: any): Uint8Array {
-  const s = new Struct(registry, {
-    NameStr: Bytes,
-    ImageHash: Bytes,
-  }, params);
-
-  return s.toU8a();
-}
-
-function mintAsync(api: ApiPromise, admin: IKeyringPair, nftMeta: Uint8Array, newOwner: string) {
-  return new Promise(async function(resolve, reject) {
-    const createData = {nft: {const_data: Array.from(nftMeta), variable_data: []}};
-    const unsub = await api.tx.nft
-      .createItem(config.collectionId, newOwner, createData)
-      .signAndSend(admin, (result) => {
-        console.log(`Current tx status is ${result.status}`);
-    
-        if (result.status.isInBlock) {
-          console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
-        // } else if (result.status.isFinalized) {
-        //   console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
-
-          // Loop through Vec<EventRecord> to display all events
-          let success = false;
-          let id = 0;
-          result.events.forEach(({ phase, event: { data, method, section } }) => {
-            console.log(`    ${phase}: ${section}.${method}:: ${data}`);
-            if (method == 'ItemCreated') {
-              success = true;
-              id = parseInt(data[1].toString());
-            }
-          });
-
-          if (success) resolve(id);
-          else {
-            reject("Transaction failed");
-          }
-          unsub();
-        }
-      });
-  });
-}
 
 const nftController = {
     health: async (req: any, res: any) => {            
@@ -114,9 +40,6 @@ const nftController = {
       // Do strictly one at a time
       const release = await mutex.acquire();
 
-      if (!api) api = await getApi();
-
-      // Get post parameters: File in base64, token name, and file name
       try {
         const {image, name, address, filename} = req.body;
         if ((image.length < 2) || (name.length == 0) || (name.length > 220) || (address.length != 48) || (filename.length < 1)) {
@@ -125,24 +48,14 @@ const nftController = {
         }
         
         const imageData = Buffer.from(image, 'base64').toString('binary');        
-
-        // Calculate metadata
-        const hash = new Keccak(256);
-        hash.update(imageData);
-        console.log(hash.digest());
-
-        let nftMeta = {
-          NameStr: name,
-          ImageHash: hash.digest().values()
-        };
-        let metaScale: Uint8Array = encodeScale(nftMeta);
-        console.log(`Token metadata: ${metaScale.toString()}`);
-
-        // Mint token in collection
-        const keyring = new Keyring({ type: 'sr25519' });
-        const admin = keyring.addFromUri(config.ownerSeed);
-        console.log("Mint adming: ", admin.address.toString());
-        const id = await mintAsync(api, admin, metaScale, address);
+      
+        const id = await polkadotSystem.add({
+          ownerSeed: config.ownerSeed,
+          name,
+          imageData,
+          address,
+          collectionId: config.collectionId
+        });
 
         await fileSystem.add({
           folder,
@@ -167,6 +80,11 @@ const nftController = {
     },
     getmeta: async (req: any, res: any) => {
       try {
+        const data = await jsonSystem.get();
+        const host = req.headers.host;      
+        const jsonConfig = JSON.parse(data);
+        const findConfig = jsonConfig.find((i:any) => i.host === host) || null;      
+
         const id = req.params.id;
         const file = await fileSystem.get({
           fileFolder: `${folder}/${id}`
@@ -178,7 +96,7 @@ const nftController = {
         } else {
           console.log(`fileName found: ${file}`);
           res.setHeader('Content-Type', 'application/json');
-          const imagePath = `http://${hostname}/${file}`;
+          const imagePath = `${findConfig !== null ? findConfig.protocol : 'https'}://${hostname}/${file}`;
           const response = {
               image: imagePath
           }
@@ -189,11 +107,41 @@ const nftController = {
         res.sendStatus(400);
       }
     },
-    getConfig: (req: any, res: any) => {
-      res.json({});
+    getConfig: async (req: any, res: any) => {
+      const data = await jsonSystem.get();
+      const host = req.headers.host;      
+      const jsonConfig = JSON.parse(data);
+      const findConfig = jsonConfig.find((i:any) => i.host === host) || {};      
+      res.json(findConfig);
     },
-    setConfig: (req: any, res: any) => {
-      res.json({})
+    setConfig: async (req: any, res: any) => {
+      const { protocol } = req.body;
+      const data = await jsonSystem.get();
+      const host = req.headers.host;      
+      const jsonConfig = JSON.parse(data);
+      const filterConfig = jsonConfig.filter((i:any) => i.host === host) || [];
+      if (filterConfig.length === 0) {
+        const added = await jsonSystem.add({
+          hostname: host,
+          protocol,
+          data
+        });
+        res.json(added);
+      } else {
+        res.json({error: 'Can`t add a record since it exists'});
+      }            
+    },
+    updateConfig: async (req: any, res: any) => {
+      const { protocol } = req.body;
+      const data = await jsonSystem.get();
+      const host = req.headers.host;
+      const jsonConfig = JSON.parse(data);
+      const index = jsonConfig.findIndex((i:any) => i.host === host);
+      jsonConfig[index].protocol = protocol;
+      await jsonSystem.update({
+        data: jsonConfig
+      });
+      res.json(jsonConfig[index]);
     }
 };
 

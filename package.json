@@ -14,7 +14,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/app.js",
-    "dev": "nodemon src/app.ts"
+    "dev": "nodemon --delay 500ms src/app.ts"
   },
   "author": "",
   "license": "Apache 2.0",

@@ -7,11 +7,11 @@ import { ApiPromise, WsProvider, Keyring } from '@polkadot/api';
 
 class PolkadotStore implements Store {
   
-  private api: Promise<ApiPromise | null >;
+  private api: Promise<ApiPromise>;
 
   private registry = new TypeRegistry();
 
-  public constructor(config: Config) {     
+  constructor(config: Config) {     
     this.api = new Promise((resolve, reject) => {
       const wsProvider = new WsProvider(config.wsEndpoint);
       let api: ApiPromise = new ApiPromise({
@@ -48,7 +48,7 @@ class PolkadotStore implements Store {
    * @param collectionId 
    * @returns 
    */
-  private mintAsync(api: ApiPromise, admin: IKeyringPair, nftMeta: Uint8Array, newOwner: string, collectionId: number) {
+  private mintAsync(api: ApiPromise, admin: IKeyringPair, nftMeta: Uint8Array, newOwner: string, collectionId: number): Promise<number> {
     return new Promise(async function(resolve, reject) {
       const createData = {nft: {const_data: Array.from(nftMeta), variable_data: []}};
       const unsub = await api.tx.nft
@@ -83,12 +83,11 @@ class PolkadotStore implements Store {
   }
   /**
    * 
-   * @param config { ownerSeed, name, image }
+   * @param config { ownerSeed, name, imageData, address, collectionId }
    */
-  public async add(config: Config): Promise< string | null > {
-    const imageData = Buffer.from(config.image, 'base64').toString('binary');
+  public async add(config: Config): Promise<number> {    
     const hash = new Keccak(256);
-    hash.update(imageData);
+    hash.update(config.imageData);
     console.log(hash.digest());
 
     let nftMeta = {
@@ -99,10 +98,16 @@ class PolkadotStore implements Store {
     console.log(`Token metadata: ${metaScale.toString()}`);
     const keyring = new Keyring({ type: 'sr25519' });
     const admin = keyring.addFromUri(config.ownerSeed);
+    const api = await this.api;
     console.log("Mint adming: ", admin.address.toString());
+    const id = await this.mintAsync( api, admin,
+      metaScale,
+      config.address,
+      config.collectionId
+    );
 
     console.log('add');
-    return imageData;
+    return id;
   }
 
   public async get(): Promise<ApiPromise | null> {

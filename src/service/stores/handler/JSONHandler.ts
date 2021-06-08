@@ -1,10 +1,9 @@
-import { Store, Config } from "../interface/Store";
+import { Store } from "../interface/Store";
 import JSONStore from "../store/JSONStore";
 import StoreHandler from "./StoreHandler";
 
-class JSONHandler extends StoreHandler {
-  public createStore(config?: Config): Store {
+export class JSONHandler extends StoreHandler {
+  public createStore(): Store {
     return new JSONStore();
   }
-}
-export default JSONHandler;
+};
