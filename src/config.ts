@@ -1,9 +1,9 @@
 import process from 'process';
 
 const config = {
-  wsEndpoint: process.env.UniqueEndpoint || 'ws://localhost:9944',
+  wsEndpoint: process.env.UniqueEndpoint || 'wss://testnet2.uniquenetwork.io',
   ownerSeed: process.env.MINT_ADMIN_SEED || "//Alice",
-  collectionId: process.env.MINT_COLLECTION_ID || 1,
+  collectionId: process.env.MINT_COLLECTION_ID || 3,
 
   publicFolder: "public",
   imagesFolder: "images"

@@ -7,8 +7,8 @@ const routes = (app: Express) => {
     app.get(`/metadata/:id`, nft.getmeta);
     //Configuration by server
     app.get('/config', nft.getConfig);
-    app.post('/config', nft.setConfig);
-    app.put('/config', nft.updateConfig);
+    //app.post('/config', nft.setConfig);
+    //app.put('/config', nft.updateConfig);
 };
 
 export default routes;
