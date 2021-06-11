@@ -2,6 +2,7 @@ import config from '../config';
 import rtt from "../runtime_types.json";
 import { Mutex } from 'async-mutex';
 import { FileSystemHandler, PolkadotHandler, JSONHandler } from '../service/stores';
+import { Request, Response } from 'express';
 
 const mutex = new Mutex();
 
@@ -142,6 +143,11 @@ const nftController = {
         data: jsonConfig
       });
       res.json(jsonConfig[index]);
+    },
+    whoAm: (req: Request, res: Response) => {
+      res.json({
+        'host': req.headers.host
+      })
     }
 };
 
